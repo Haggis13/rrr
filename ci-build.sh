@@ -15,19 +15,45 @@ fail_step() {
   fi
 }
 
-echo "=== Source segment diagnostics ==="
-wc -c project.part00 project.part01 project.part02 project.part03
-for f in project.part00 project.part01 project.part02 project.part03; do
-  echo "$f invalid characters: $(tr -d 'A-Za-z0-9+/=\r\n\t ' < "$f" | wc -c)"
-done
+echo "=== Locate and verify source segments ==="
+python3 - <<'PY'
+from pathlib import Path
+import hashlib
+import sys
+
+specs = [
+    ("project.part00", 7000, "90133f936e91eaafaca537115b4ac64c68e7b8ba4654deaabd8973254712d71d"),
+    ("project.part01", 7000, "15bd0f9e9eea3bf8290f09eae7d91ec6792430910ae80e835c3906e9d3a02d67"),
+    ("project.part02", 7000, "96de0b4766742e70d63442b89ce1dd6107b2f07e97e05573899ba4debeb676e5"),
+    ("project.part03", 1412, "3ab801275fe1e67ed7c2eb693b11c4a4364b056b5928e0aeae0398d93f1f77d1"),
+]
+for index, (name, wanted_len, wanted_hash) in enumerate(specs):
+    data = Path(name).read_bytes()
+    print(f"{name}: stored={len(data)}, wanted={wanted_len}, target={wanted_hash}")
+    found = None
+    found_offset = None
+    if len(data) >= wanted_len:
+        for offset in range(len(data) - wanted_len + 1):
+            candidate = data[offset:offset + wanted_len]
+            if hashlib.sha256(candidate).hexdigest() == wanted_hash:
+                found = candidate
+                found_offset = offset
+                break
+    if found is None:
+        print(f"ERROR: verified segment not found in {name}")
+        sys.exit(21 + index)
+    output = Path(f"/tmp/t90-part{index:02d}")
+    output.write_bytes(found)
+    print(f"VERIFIED: {name} offset={found_offset}, sha256={hashlib.sha256(found).hexdigest()}")
+PY
+fail_step $? "source segment verification"
 
 echo "=== Reconstruct source ==="
-{
-  head -c 7000 project.part00
-  head -c 7000 project.part01
-  cat project.part02 project.part03
-} | tr -cd 'A-Za-z0-9+/=' | base64 --decode > /tmp/t90-source.tgz
-fail_step $? "base64 decode"
+if [ "$STATUS" -eq 0 ]; then
+  cat /tmp/t90-part00 /tmp/t90-part01 /tmp/t90-part02 /tmp/t90-part03 \
+    | base64 --decode > /tmp/t90-source.tgz
+  fail_step $? "base64 decode"
+fi
 if [ "$STATUS" -eq 0 ]; then
   echo "Expected archive SHA-256: 9939f329560c0018bd29c0dd98e82c0e40c631cddf8f082bee1c40ebdfeb23d9"
   sha256sum /tmp/t90-source.tgz
@@ -108,6 +134,6 @@ if [ -f dist/T90-Cockpit-1.0.0.apk ]; then
   git add -f dist/T90-Cockpit-1.0.0.apk \
     dist/T90-Cockpit-1.0.0.apk.sha256 dist/apk.part* dist/apk-parts.txt
 fi
-git commit -m "[ci shell result v2] T90 Cockpit build status $STATUS" || true
+git commit -m "[ci verified segments] T90 Cockpit build status $STATUS" || true
 git push origin HEAD:build/t90-cockpit-1.0.0
 exit "$STATUS"
