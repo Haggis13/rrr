@@ -22,9 +22,11 @@ for f in project.part00 project.part01 project.part02 project.part03; do
 done
 
 echo "=== Reconstruct source ==="
-cat project.part00 project.part01 project.part02 project.part03 \
-  | tr -cd 'A-Za-z0-9+/=' \
-  | base64 --decode > /tmp/t90-source.tgz
+{
+  head -c 7000 project.part00
+  head -c 7000 project.part01
+  cat project.part02 project.part03
+} | tr -cd 'A-Za-z0-9+/=' | base64 --decode > /tmp/t90-source.tgz
 fail_step $? "base64 decode"
 if [ "$STATUS" -eq 0 ]; then
   echo "Expected archive SHA-256: 9939f329560c0018bd29c0dd98e82c0e40c631cddf8f082bee1c40ebdfeb23d9"
@@ -106,6 +108,6 @@ if [ -f dist/T90-Cockpit-1.0.0.apk ]; then
   git add -f dist/T90-Cockpit-1.0.0.apk \
     dist/T90-Cockpit-1.0.0.apk.sha256 dist/apk.part* dist/apk-parts.txt
 fi
-git commit -m "[ci shell result] T90 Cockpit build status $STATUS" || true
+git commit -m "[ci shell result v2] T90 Cockpit build status $STATUS" || true
 git push origin HEAD:build/t90-cockpit-1.0.0
 exit "$STATUS"
