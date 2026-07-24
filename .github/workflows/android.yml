@@ -10,7 +10,6 @@ permissions:
 
 jobs:
   build:
-    if: contains(github.event.issue.title, '[BUILD T90 COCKPIT V3]')
     runs-on: ubuntu-latest
     steps:
       - name: Checkout build branch
@@ -123,7 +122,7 @@ jobs:
             git add -f dist/T90-Cockpit-1.0.0.apk \
               dist/T90-Cockpit-1.0.0.apk.sha256 dist/apk.part* dist/apk-parts.txt
           fi
-          git commit -m "[ci result v3] T90 Cockpit build status $STATUS" || true
+          git commit -m "[ci result v4] T90 Cockpit build status $STATUS" || true
           git push origin HEAD:build/t90-cockpit-1.0.0
           exit "$STATUS"
 
