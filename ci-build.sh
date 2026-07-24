@@ -49,10 +49,21 @@ export JAVA_HOME="${JAVA_HOME_17_X64:-$JAVA_HOME}"
 export PATH="$JAVA_HOME/bin:$PATH"
 java -version
 fail_step $? "Java 17"
+SDK_ROOT="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-/usr/local/lib/android/sdk}}"
+export ANDROID_HOME="$SDK_ROOT"
+export ANDROID_SDK_ROOT="$SDK_ROOT"
+SDKMANAGER="$(find "$SDK_ROOT" -type f -name sdkmanager 2>/dev/null | head -n 1)"
+echo "ANDROID_HOME=$ANDROID_HOME"
+echo "SDKMANAGER=$SDKMANAGER"
 if [ "$STATUS" -eq 0 ]; then
-  yes | sdkmanager --licenses >/dev/null || true
-  sdkmanager "platforms;android-35" "build-tools;35.0.0"
-  fail_step $? "Android SDK install"
+  if [ -z "$SDKMANAGER" ]; then
+    echo "sdkmanager was not found under $SDK_ROOT"
+    STATUS=127
+  else
+    yes | "$SDKMANAGER" --licenses >/dev/null || true
+    "$SDKMANAGER" "platforms;android-35" "build-tools;35.0.0"
+    fail_step $? "Android SDK install"
+  fi
 fi
 
 echo "=== Gradle ==="
@@ -90,9 +101,14 @@ fi
 
 echo "=== APK signature verification ==="
 if [ "$STATUS" -eq 0 ]; then
-  "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose --print-certs \
-    app/build/outputs/apk/release/app-release.apk
-  fail_step $? "APK signature verification"
+  APKSIGNER="$(find "$ANDROID_HOME/build-tools" -type f -name apksigner 2>/dev/null | sort -V | tail -n 1)"
+  echo "APKSIGNER=$APKSIGNER"
+  if [ -z "$APKSIGNER" ]; then
+    STATUS=127
+  else
+    "$APKSIGNER" verify --verbose --print-certs app/build/outputs/apk/release/app-release.apk
+    fail_step $? "APK signature verification"
+  fi
 fi
 
 if [ "$STATUS" -eq 0 ]; then
@@ -113,6 +129,6 @@ if [ -f dist/T90-Cockpit-1.0.0.apk ]; then
   git add -f dist/T90-Cockpit-1.0.0.apk \
     dist/T90-Cockpit-1.0.0.apk.sha256 dist/apk.part* dist/apk-parts.txt
 fi
-git commit -m "[ci exact chunks] T90 Cockpit build status $STATUS" || true
+git commit -m "[ci sdk path] T90 Cockpit build status $STATUS" || true
 git push origin HEAD:build/t90-cockpit-1.0.0
 exit "$STATUS"
