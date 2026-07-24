@@ -1,4 +1,4 @@
-name: Build T90 Cockpit APK
+name: Export T90 Cockpit APK
 
 on:
   issues:
@@ -9,19 +9,31 @@ permissions:
   contents: write
 
 jobs:
-  build:
+  export:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout build branch
+      - name: Checkout APK branch
         uses: actions/checkout@v4
         with:
           ref: build/t90-cockpit-1.0.0
           fetch-depth: 0
-      - name: Run Android build script
-        run: bash ci-build.sh
-      - name: Upload build directory
-        if: always()
+
+      - name: Publish run identifier
+        shell: bash
+        run: |
+          echo "${GITHUB_RUN_ID}" > dist/artifact-run-id.txt
+          echo "${GITHUB_RUN_ATTEMPT}" > dist/artifact-run-attempt.txt
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add -f dist/artifact-run-id.txt dist/artifact-run-attempt.txt
+          git commit -m "[artifact export] T90 Cockpit run ${GITHUB_RUN_ID}" || true
+          git push origin HEAD:build/t90-cockpit-1.0.0
+
+      - name: Upload signed APK
         uses: actions/upload-artifact@v4
         with:
           name: T90-Cockpit-1.0.0
-          path: dist/
+          path: |
+            dist/T90-Cockpit-1.0.0.apk
+            dist/T90-Cockpit-1.0.0.apk.sha256
+          if-no-files-found: error
