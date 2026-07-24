@@ -1,12 +1,20 @@
-=== Locate and verify source segments ===
-project.part00: stored=9105, wanted=7000, target=90133f936e91eaafaca537115b4ac64c68e7b8ba4654deaabd8973254712d71d
-ERROR: verified segment not found in project.part00
-FAILED STEP: source segment verification (exit 21)
+=== Verify exact source chunks ===
+exact.part00: OK
+exact.part01: OK
+exact.part02: OK
+exact.part03: OK
+exact.part04: OK
+exact.part05: OK
 === Reconstruct source ===
+/tmp/t90-source.tgz: OK
 === Java and Android SDK ===
 openjdk version "17.0.19" 2026-04-21
 OpenJDK Runtime Environment Temurin-17.0.19+10 (build 17.0.19+10)
 OpenJDK 64-Bit Server VM Temurin-17.0.19+10 (build 17.0.19+10, mixed mode, sharing)
+ci-build.sh: line 53: sdkmanager: command not found
+yes: standard output: Broken pipe
+ci-build.sh: line 54: sdkmanager: command not found
+FAILED STEP: Android SDK install (exit 127)
 === Gradle ===
 === Release key ===
 === Unit tests and APK build ===
