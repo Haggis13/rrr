@@ -1,0 +1,91 @@
+name: Build T90 Cockpit APK
+
+on:
+  issues:
+    types: [opened]
+
+permissions:
+  contents: write
+  issues: read
+
+jobs:
+  build:
+    if: contains(github.event.issue.title, '[BUILD T90 COCKPIT]')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout build branch
+        uses: actions/checkout@v4
+        with:
+          ref: build/t90-cockpit-1.0.0
+          fetch-depth: 0
+
+      - name: Reconstruct source
+        shell: bash
+        run: |
+          cat project.part00 project.part01 project.part02 project.part03 | base64 --decode | tar -xzf -
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.11.1'
+
+      - name: Install Android SDK
+        shell: bash
+        run: |
+          yes | sdkmanager --licenses >/dev/null || true
+          sdkmanager "platforms;android-35" "build-tools;35.0.0"
+
+      - name: Generate ephemeral release key
+        shell: bash
+        run: |
+          mkdir -p keystore
+          keytool -genkeypair -v \
+            -keystore keystore/t90-release.jks \
+            -storepass T90Cockpit2026 \
+            -keypass T90Cockpit2026 \
+            -alias t90cockpit \
+            -keyalg RSA -keysize 3072 -validity 10000 \
+            -dname "CN=T90 Cockpit, OU=Local Build, O=THK1304, L=Norway, C=NO"
+
+      - name: Build, test and publish
+        shell: bash
+        run: |
+          set +e
+          mkdir -p dist
+          gradle --no-daemon clean testReleaseUnitTest assembleRelease > dist/build.log 2>&1
+          STATUS=$?
+          if [ "$STATUS" -eq 0 ]; then
+            "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose app/build/outputs/apk/release/app-release.apk >> dist/build.log 2>&1
+            VERIFY=$?
+            if [ "$VERIFY" -ne 0 ]; then STATUS=$VERIFY; fi
+          fi
+          rm -f dist/T90-Cockpit-1.0.0.apk dist/T90-Cockpit-1.0.0.apk.sha256
+          if [ "$STATUS" -eq 0 ]; then
+            cp app/build/outputs/apk/release/app-release.apk dist/T90-Cockpit-1.0.0.apk
+            sha256sum dist/T90-Cockpit-1.0.0.apk > dist/T90-Cockpit-1.0.0.apk.sha256
+            echo SUCCESS > dist/build-status.txt
+          else
+            echo "FAILED:$STATUS" > dist/build-status.txt
+          fi
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add -f dist/build.log dist/build-status.txt
+          if [ -f dist/T90-Cockpit-1.0.0.apk ]; then
+            git add -f dist/T90-Cockpit-1.0.0.apk dist/T90-Cockpit-1.0.0.apk.sha256
+          fi
+          git commit -m "[ci result] T90 Cockpit build status $STATUS" || true
+          git push origin HEAD:build/t90-cockpit-1.0.0
+          exit "$STATUS"
+
+      - name: Upload result
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: T90-Cockpit-1.0.0
+          path: dist/
