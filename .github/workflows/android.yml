@@ -1,47 +1,62 @@
 name: Build T90 Cockpit APK
 
 on:
-  issues:
-    types: [opened]
+  pull_request:
+    branches: [ main ]
 
 permissions:
   contents: write
-  issues: read
+  pull-requests: read
 
 jobs:
   build:
-    if: contains(github.event.issue.title, '[BUILD T90 COCKPIT]')
     runs-on: ubuntu-latest
     steps:
       - name: Checkout build branch
         uses: actions/checkout@v4
         with:
-          ref: build/t90-cockpit-1.0.0
+          ref: ${{ github.event.pull_request.head.ref }}
           fetch-depth: 0
 
+      - name: Detect generated result commit
+        id: gate
+        shell: bash
+        run: |
+          MSG="$(git log -1 --pretty=%B)"
+          if [[ "$MSG" == *"[ci result]"* ]]; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Reconstruct source
+        if: steps.gate.outputs.skip != 'true'
         shell: bash
         run: |
           cat project.part00 project.part01 project.part02 project.part03 | base64 --decode | tar -xzf -
 
       - name: Set up Java 17
+        if: steps.gate.outputs.skip != 'true'
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '17'
 
       - name: Set up Gradle
+        if: steps.gate.outputs.skip != 'true'
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.11.1'
 
       - name: Install Android SDK
+        if: steps.gate.outputs.skip != 'true'
         shell: bash
         run: |
           yes | sdkmanager --licenses >/dev/null || true
           sdkmanager "platforms;android-35" "build-tools;35.0.0"
 
       - name: Generate ephemeral release key
+        if: steps.gate.outputs.skip != 'true'
         shell: bash
         run: |
           mkdir -p keystore
@@ -54,6 +69,7 @@ jobs:
             -dname "CN=T90 Cockpit, OU=Local Build, O=THK1304, L=Norway, C=NO"
 
       - name: Build, test and publish
+        if: steps.gate.outputs.skip != 'true'
         shell: bash
         run: |
           set +e
@@ -80,11 +96,11 @@ jobs:
             git add -f dist/T90-Cockpit-1.0.0.apk dist/T90-Cockpit-1.0.0.apk.sha256
           fi
           git commit -m "[ci result] T90 Cockpit build status $STATUS" || true
-          git push origin HEAD:build/t90-cockpit-1.0.0
+          git push origin HEAD:${{ github.event.pull_request.head.ref }}
           exit "$STATUS"
 
       - name: Upload result
-        if: always()
+        if: steps.gate.outputs.skip != 'true' && always()
         uses: actions/upload-artifact@v4
         with:
           name: T90-Cockpit-1.0.0
