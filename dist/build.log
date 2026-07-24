@@ -9,8 +9,11 @@ project.part01 invalid characters: 0
 project.part02 invalid characters: 0
 project.part03 invalid characters: 0
 === Reconstruct source ===
-base64: invalid input
-FAILED STEP: base64 decode (exit 1)
+Expected archive SHA-256: 9939f329560c0018bd29c0dd98e82c0e40c631cddf8f082bee1c40ebdfeb23d9
+b148dc4f36acde7484c719a27f58b3559f0f965f25a576ca69a7774b6e4bc3f3  /tmp/t90-source.tgz
+/tmp/t90-source.tgz: FAILED
+sha256sum: WARNING: 1 computed checksum did NOT match
+FAILED STEP: archive checksum (exit 1)
 === Java and Android SDK ===
 openjdk version "17.0.19" 2026-04-21
 OpenJDK Runtime Environment Temurin-17.0.19+10 (build 17.0.19+10)
