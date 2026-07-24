@@ -1,3 +1,13 @@
+=== Source segment diagnostics ===
+ 9105 project.part00
+ 9096 project.part01
+ 7000 project.part02
+ 1412 project.part03
+26613 total
+project.part00 invalid characters: 0
+project.part01 invalid characters: 0
+project.part02 invalid characters: 0
+project.part03 invalid characters: 0
 === Reconstruct source ===
 base64: invalid input
 FAILED STEP: base64 decode (exit 1)
