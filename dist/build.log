@@ -1,0 +1,12 @@
+=== Reconstruct source ===
+base64: invalid input
+FAILED STEP: base64 decode (exit 1)
+=== Java and Android SDK ===
+openjdk version "17.0.19" 2026-04-21
+OpenJDK Runtime Environment Temurin-17.0.19+10 (build 17.0.19+10)
+OpenJDK 64-Bit Server VM Temurin-17.0.19+10 (build 17.0.19+10, mixed mode, sharing)
+=== Gradle ===
+=== Release key ===
+=== Unit tests and APK build ===
+=== APK signature verification ===
+=== Publish result ===
